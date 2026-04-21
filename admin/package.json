@@ -22,6 +22,8 @@
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.6.2",
     "react-spinners": "^0.17.0",
+    "react-to-pdf": "^3.2.2",
+    "react-to-print": "^3.3.0",
     "react-toastify": "^11.0.5",
     "tailwindcss": "^4.1.8"
   },
