@@ -1,401 +1,232 @@
+
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FaEye, FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
+import { FaEye, FaEdit, FaTrashAlt, FaArrowLeft, FaArrowRight, FaTimes, FaCamera, FaUser, FaPhone, FaBirthdayCake, FaVenusMars } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ClipLoader } from 'react-spinners';
 
 const UsersList = () => {
   const [users, setUsers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [aToken, setAToken] = useState(localStorage.getItem('aToken'));
+  const [loading, setLoading] = useState(false);
+  const aToken = localStorage.getItem('aToken');
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-  const [viewUser, setViewUser] = useState(null); // For viewing user profile
-  const [editUser, setEditUser] = useState(null); // For editing user profile
-  const [deleteUserId, setDeleteUserId] = useState(null); // For deleting user
-  const [showDeleteModal, setShowDeleteModal] = useState(false); // Show delete confirmation modal
-  const [previewImage, setPreviewImage] = useState(null); // For profile picture preview
+  const [viewUser, setViewUser] = useState(null);
+  const [editUser, setEditUser] = useState(null);
+  const [deleteUserId, setDeleteUserId] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
 
-  // Fetch users with pagination
   const fetchUsers = async (page = 1) => {
     try {
       const { data } = await axios.get(`${backendUrl}/api/admin/all-users?page=${page}`, {
         headers: { aToken }
       });
-
       if (data.success) {
         setUsers(data.users);
-        setTotalPages(data.totalPages);
-        setCurrentPage(data.currentPage);
-      } else {
-        toast.error(data.message || 'Failed to fetch users');
+        setTotalPages(data.totalPages || 1);
+        setCurrentPage(data.currentPage || 1);
       }
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Something went wrong');
+      toast.error('Failed to fetch users');
     }
   };
 
-  // Handle pagination
-  const handlePagination = (newPage) => {
-    if (newPage < 1 || newPage > totalPages) return;
-    setCurrentPage(newPage);
-    fetchUsers(newPage);
-  };
-
-  // Delete user
   const deleteUser = async () => {
     try {
       const { data } = await axios.delete(`${backendUrl}/api/admin/delete-user/${deleteUserId}`, {
         headers: { aToken }
       });
-
       if (data.success) {
-        toast.success(data.message || 'User deleted successfully');
-        setShowDeleteModal(false);
+        toast.success('User deleted');
+        setDeleteUserId(null);
         fetchUsers(currentPage);
-      } else {
-        toast.error(data.message || 'Failed to delete user');
       }
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Something went wrong');
+      toast.error('Delete failed');
     }
   };
 
-  // View user profile
-  const viewUserProfile = async (userId) => {
-    try {
-      const { data } = await axios.get(`${backendUrl}/api/admin/view-user/${userId}`, {
-        headers: { aToken }
-      });
-
-      if (data.success) {
-        setViewUser(data.user); // Set the user data to view
-      } else {
-        toast.error(data.message || 'Failed to fetch user profile');
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Something went wrong');
-    }
-  };
-
-  // Edit user profile
-  const editUserProfile = async (userId) => {
-    try {
-      const { data } = await axios.get(`${backendUrl}/api/admin/view-user/${userId}`, {
-        headers: { aToken }
-      });
-
-      if (data.success) {
-        setEditUser(data.user); // Set the user data to edit
-        setPreviewImage(data.user.profilePic || null); // Set the preview image from existing profile pic
-      } else {
-        toast.error(data.message || 'Failed to fetch user profile');
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Something went wrong');
-    }
-  };
-
-  // Handle form submission for updating user profile
   const handleEditSubmit = async (e) => {
     e.preventDefault();
-
+    setLoading(true);
     try {
-      const { _id, name, email, ...updatedData } = editUser;
-
-      const updatedFields = Object.keys(updatedData).reduce((acc, key) => {
-        if (updatedData[key] !== editUser[key]) {
-          acc[key] = updatedData[key];
-        }
-        return acc;
-      }, {});
-
-      if (Object.keys(updatedFields).length === 0) {
-        toast.info('No changes were made');
-        return;
-      }
-
       const formData = new FormData();
       formData.append('name', editUser.name);
-      formData.append('email', editUser.email);
-      formData.append('phone', editUser.phone);
-      formData.append('dob', editUser.dob);
-      formData.append('gender', editUser.gender);
-      if (editUser.profilePic) {
-        formData.append('profilePic', editUser.profilePic);
+      formData.append('phone', editUser.phone || '');
+      formData.append('dob', editUser.dob || '');
+      formData.append('gender', editUser.gender || 'Male');
+      
+      if (editUser.newProfilePic) {
+        formData.append('image', editUser.newProfilePic);
       }
 
-      const { data } = await axios.put(`${backendUrl}/api/admin/update-user/${_id}`, formData, {
-        headers: { 
-          'Content-Type': 'multipart/form-data',
-          aToken 
-        }
+      const { data } = await axios.put(`${backendUrl}/api/admin/update-user/${editUser._id}`, formData, {
+        headers: { aToken, 'Content-Type': 'multipart/form-data' }
       });
 
       if (data.success) {
-        toast.success('User updated successfully');
-        setEditUser(null); // Close the edit modal
-        fetchUsers(currentPage); // Refresh the users list
-      } else {
-        toast.error(data.message || 'Failed to update user');
+        toast.success('Profile Updated!');
+        setEditUser(null);
+        fetchUsers(currentPage);
       }
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || 'Something went wrong');
+      toast.error(error.response?.data?.message || 'Update failed');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Handle image preview on file input change
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    setPreviewImage(URL.createObjectURL(file)); // Set the preview image
-    setEditUser({ ...editUser, profilePic: file }); // Store the file for submission
-  };
-
-  useEffect(() => {
-    fetchUsers(currentPage);
-  }, [currentPage]);
+  useEffect(() => { fetchUsers(currentPage); }, [currentPage]);
 
   return (
-    <div className="users-list bg-white p-6 ml-2 mt-2 min-w-[80vw] rounded-lg shadow-lg h-screen overflow-hidden">
-      <h3 className="text-2xl font-semibold mb-4">Users List</h3>
-      <div className="overflow-x-auto max-h-[calc(100vh-80px)] overflow-y-auto">
-        <table className="table-auto w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="px-4 py-2 border">Name</th>
-              <th className="px-4 py-2 border">Email</th>
-              <th className="px-4 py-2 border">Total Spent</th>
-              <th className="px-4 py-2 border">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user._id}>
-                <td className="px-4 py-2 border">{user.name}</td>
-                <td className="px-4 py-2 border">{user.email}</td>
-                <td className="px-4 py-2 border">₹{user.totalCost || 0}</td>
-                <td className="px-4 py-2 border">
-                  <button onClick={() => viewUserProfile(user._id)} className="text-blue-500 hover:text-blue-700 mr-2">
-                    <FaEye />
-                  </button>
-                  <button onClick={() => editUserProfile(user._id)} className="text-yellow-500 hover:text-yellow-700 mr-2">
-                    <FaEdit />
-                  </button>
-                  <button onClick={() => { setDeleteUserId(user._id); setShowDeleteModal(true); }} className="text-red-500 hover:text-red-700">
-                    <FaTrashAlt />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="p-6 w-full max-w-7xl mx-auto h-screen overflow-hidden flex flex-col">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className='text-3xl font-black text-gray-800 tracking-tight'>User Directory</h1>
+          <p className='text-gray-500 text-sm font-medium'>View and manage registered patients</p>
+        </div>
       </div>
 
-      {/* Pagination Controls */}
-      <div className="pagination mt-4 text-center">
-        <button
-          onClick={() => handlePagination(currentPage - 1)}
-          disabled={currentPage === 1 || totalPages === 1}
-          className="px-4 py-2 bg-gray-300 rounded-md mr-2 disabled:opacity-50"
-        >
-          <FaArrowLeft />
-        </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          onClick={() => handlePagination(currentPage + 1)}
-          disabled={currentPage === totalPages || totalPages === 1}
-          className="px-4 py-2 bg-gray-300 rounded-md ml-2 disabled:opacity-50"
-        >
-          <FaArrowRight />
-        </button>
+      {/* --- TABLE --- */}
+      <div className='bg-white/70 backdrop-blur-md rounded-[2.5rem] border border-gray-100 shadow-xl overflow-hidden flex-1 flex flex-col'>
+        <div className='hidden md:grid grid-cols-[3fr_3fr_2fr_1.5fr] bg-gray-50/50 py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b'>
+          <p>Patient</p><p>Email</p><p>Total Revenue</p><p className="text-right">Actions</p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {users.map((user) => (
+            <div key={user._id} className='flex flex-col md:grid md:grid-cols-[3fr_3fr_2fr_1.5fr] items-center py-4 px-8 border-b last:border-0 hover:bg-indigo-50/30 transition-all'>
+              <div className="flex items-center gap-3 w-full">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 overflow-hidden">
+                  <img src={user.image || user.profilePic} className="w-full h-full object-cover" alt="" />
+                </div>
+                <p className="font-bold text-gray-800">{user.name}</p>
+              </div>
+              <p className="text-gray-500 font-medium text-sm w-full">{user.email}</p>
+              <p className="font-black text-indigo-600 w-full">₹{user.totalCost || 0}</p>
+              <div className="flex justify-end gap-2 w-full">
+                <ActionButton icon={<FaEye />} color="text-blue-500" onClick={() => setViewUser(user)} />
+                <ActionButton icon={<FaEdit />} color="text-yellow-500" onClick={() => { setEditUser(user); setPreviewImage(user.image || user.profilePic); }} />
+                <ActionButton icon={<FaTrashAlt />} color="text-red-500" onClick={() => setDeleteUserId(user._id)} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* --- PAGINATION --- */}
+        <div className="p-6 bg-gray-50/50 border-t flex justify-center items-center gap-4">
+          <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="p-2 bg-white rounded-xl shadow-sm disabled:opacity-30"><FaArrowLeft /></button>
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Page {currentPage} of {totalPages}</span>
+          <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="p-2 bg-white rounded-xl shadow-sm disabled:opacity-30"><FaArrowRight /></button>
+        </div>
       </div>
 
-      {/* Modal: View User Profile */}
-      {viewUser && (
-        <motion.div
-          className="modal fixed inset-0 bg-transparent backdrop-blur flex items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <motion.div
-            className="modal-content bg-white border-2 p-6 rounded-lg w-3/4 max-w-4xl h-[80vh] overflow-auto"
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="flex items-center mb-6">
-              {/* Profile Picture */}
-              <div className="mr-6">
-                <img
-                  src={viewUser.image || 'default-avatar.jpg'}
-                  alt="Profile"
-                  className="w-32 h-32 rounded-full object-cover shadow-lg"
-                />
+      <AnimatePresence>
+        {/* --- VIEW MODAL --- */}
+        {viewUser && (
+          <Modal close={() => setViewUser(null)} title="Patient File">
+             <div className="flex flex-col items-center mb-8">
+                <img src={viewUser.image || viewUser.profilePic} className="w-32 h-32 rounded-[2.5rem] object-cover shadow-2xl border-4 border-white mb-4" alt="" />
+                <h2 className="text-2xl font-black text-gray-800">{viewUser.name}</h2>
+                <p className="text-indigo-600 font-bold text-sm tracking-widest uppercase">{viewUser.gender || 'Not Specified'}</p>
+             </div>
+             <div className="grid grid-cols-2 gap-4">
+                <InfoItem label="Email" value={viewUser.email} />
+                <InfoItem label="Phone" value={viewUser.phone || 'N/A'} />
+                <InfoItem label="Birthday" value={viewUser.dob || 'N/A'} />
+                <InfoItem label="Total Spent" value={`₹${viewUser.totalCost || 0}`} />
+             </div>
+          </Modal>
+        )}
+
+        {/* --- EDIT MODAL --- */}
+        {editUser && (
+          <Modal close={() => setEditUser(null)} title="Update Profile">
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div className="flex flex-col items-center mb-6">
+                <label htmlFor="edit-img" className="relative cursor-pointer group">
+                  <img src={previewImage} className="w-28 h-28 rounded-3xl object-cover border-4 border-indigo-50 group-hover:border-indigo-200 transition-all" alt="" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity text-white"><FaCamera /></div>
+                </label>
+                <input type="file" id="edit-img" hidden onChange={(e) => {
+                   const file = e.target.files[0];
+                   setPreviewImage(URL.createObjectURL(file));
+                   setEditUser({...editUser, newProfilePic: file});
+                }} />
               </div>
-              {/* Profile Details */}
-              <div>
-                <h2 className="text-3xl font-semibold mb-2">{viewUser.name}</h2>
-                <p className="text-lg text-gray-700 mb-2"><strong>Email:</strong> {viewUser.email}</p>
-                <p className="text-lg text-gray-700 mb-2"><strong>User ID:</strong> {viewUser._id}</p>
-                <p className="text-lg text-gray-700 mb-2"><strong>Total Spent:</strong> ₹{viewUser.totalCost || 0}</p>
-              </div>
-            </div>
-
-            <div className="border-t mt-6 pt-4">
-              <h3 className="text-2xl font-semibold mb-4">Personal Information</h3>
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p><strong>Phone:</strong> {viewUser.phone || 'Not Provided'}</p>
-                  <p><strong>Date of Birth:</strong> {viewUser.dob || 'Not Provided'}</p>
-                </div>
-                <div>
-                  <p><strong>Gender:</strong> {viewUser.gender || 'Not Provided'}</p>
+              <EditInput icon={<FaUser />} label="Name" value={editUser.name} onChange={(val)=>setEditUser({...editUser, name: val})} />
+              <EditInput icon={<FaPhone />} label="Phone" value={editUser.phone} onChange={(val)=>setEditUser({...editUser, phone: val})} />
+              <div className="flex gap-4">
+                <EditInput icon={<FaBirthdayCake />} label="DOB" type="date" value={editUser.dob} onChange={(val)=>setEditUser({...editUser, dob: val})} />
+                <div className="flex-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-1 block">Gender</label>
+                    <select value={editUser.gender} onChange={(e)=>setEditUser({...editUser, gender: e.target.value})} className="w-full p-3 bg-gray-50 rounded-xl outline-none text-sm font-semibold text-gray-700">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
               </div>
-            </div>
-
-            <div className="border-t mt-6 pt-4">
-              <h3 className="text-2xl font-semibold mb-4">Appointments</h3>
-              <ul className="space-y-4">
-                {viewUser.appointments && viewUser.appointments.length > 0 ? (
-                  viewUser.appointments.map((appointment, index) => (
-                    <li key={index} className="p-4 bg-gray-50 rounded-lg shadow-md">
-                      <div className="flex justify-between mb-2">
-                        <span className="font-semibold">Date:</span>
-                        <span>{appointment.slotDate}</span>
-                      </div>
-                      <div className="flex justify-between mb-2">
-                        <span className="font-semibold">Time:</span>
-                        <span>{appointment.slotTime}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Amount:</span>
-                        <span>₹{appointment.amount}</span>
-                      </div>
-                    </li>
-                  ))
-                ) : (
-                  <li className="p-4 bg-gray-50 rounded-lg shadow-md">No appointments found</li>
-                )}
-              </ul>
-            </div>
-
-            <div className="mt-6 text-right">
-              <button
-                onClick={() => setViewUser(null)}
-                className="bg-gray-500 text-white px-4 py-2 rounded shadow-md hover:bg-gray-600"
-              >
-                Close
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-
-      {/* Modal: Edit User Profile */}
-      {editUser && (
-        <motion.div
-          className="modal fixed inset-0 bg-transparent backdrop-blur flex items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <motion.div
-            className="modal-content bg-white border-2 p-6 rounded-lg"
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            transition={{ duration: 0.3 }}
-          >
-            <h2 className="text-xl font-semibold mb-4">Edit User Profile</h2>
-            <form onSubmit={handleEditSubmit}>
-              <label className="block mb-2">Phone:</label>
-              <input
-                type="text"
-                value={editUser.phone || ''}
-                onChange={(e) => setEditUser({ ...editUser, phone: e.target.value })}
-                className="mb-4 p-2 border rounded w-full"
-              />
-              <label className="block mb-2">Date of Birth:</label>
-              <input
-                type="date"
-                value={editUser.dob || ''}
-                onChange={(e) => setEditUser({ ...editUser, dob: e.target.value })}
-                className="mb-4 p-2 border rounded w-full"
-              />
-              <label className="block mb-2">Gender:</label>
-              <select
-                value={editUser.gender || ''}
-                onChange={(e) => setEditUser({ ...editUser, gender: e.target.value })}
-                className="mb-4 p-2 border rounded w-full"
-              >
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-
-              {/* Profile Picture Preview */}
-              <label className="block mb-2">Profile Picture:</label>
-              <input
-                type="file"
-                onChange={handleImageChange}
-                className="mb-4 p-2 border rounded w-full"
-              />
-              {previewImage && (
-                <div className="mb-4">
-                  <img
-                    src={previewImage}
-                    alt="Preview"
-                    className="w-32 h-32 rounded-full object-cover"
-                  />
-                </div>
-              )}
-
-              <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
-              <button onClick={() => setEditUser(null)} type="button" className="ml-2 bg-gray-500 text-white px-4 py-2 rounded">
-                Cancel
+              <button disabled={loading} type="submit" className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-xl hover:bg-black transition-all flex items-center justify-center">
+                {loading ? <ClipLoader color="#fff" size={20} /> : "Save Changes"}
               </button>
             </form>
-          </motion.div>
-        </motion.div>
-      )}
+          </Modal>
+        )}
 
-      {/* Modal: Delete Confirmation */}
-      {showDeleteModal && (
-        <motion.div
-          className="modal fixed inset-0 bg-transparent backdrop-blur  flex items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <motion.div
-            className="modal-content bg-white border-2 p-6 rounded-lg"
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            transition={{ duration: 0.3 }}
-          >
-            <h2 className="text-xl font-semibold mb-4">Are you sure you want to delete this user?</h2>
-            <button onClick={deleteUser} className="bg-red-500 text-white px-4 py-2 rounded mr-2">Yes, Delete</button>
-            <button onClick={() => setShowDeleteModal(false)} className="bg-gray-500 text-white px-4 py-2 rounded">Cancel</button>
-          </motion.div>
-        </motion.div>
-      )}
+        {/* --- DELETE CONFIRMATION --- */}
+        {deleteUserId && (
+          <Modal close={() => setDeleteUserId(null)} title="Danger Zone">
+            <div className="text-center py-4">
+                <h3 className="text-lg font-bold text-gray-800 mb-6">Are you sure you want to permanently delete this user?</h3>
+                <div className="flex gap-4">
+                    <button onClick={deleteUser} className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 shadow-lg shadow-red-100">Delete User</button>
+                    <button onClick={() => setDeleteUserId(null)} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold hover:bg-gray-200">Cancel</button>
+                </div>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
+
+// --- HELPER COMPONENTS ---
+const ActionButton = ({ icon, color, onClick }) => (
+    <button onClick={onClick} className={`p-2 rounded-xl bg-white border border-gray-100 shadow-sm ${color} hover:scale-110 transition-all`}>{icon}</button>
+);
+
+const Modal = ({ children, close, title }) => (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+        <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} onClick={close} className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" />
+        <motion.div initial={{y:50, opacity:0}} animate={{y:0, opacity:1}} exit={{y:50, opacity:0}} className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden">
+            <div className="p-6 border-b flex justify-between items-center bg-gray-50/50">
+                <h2 className="text-sm font-black uppercase tracking-widest text-gray-400">{title}</h2>
+                <button onClick={close} className="p-2 hover:bg-gray-200 rounded-full transition-colors"><FaTimes /></button>
+            </div>
+            <div className="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar">{children}</div>
+        </motion.div>
+    </div>
+);
+
+const InfoItem = ({ label, value }) => (
+    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-sm font-bold text-gray-700">{value}</p>
+    </div>
+);
+
+const EditInput = ({ label, icon, value, onChange, type="text" }) => (
+    <div className="flex flex-col group">
+        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-1">{label}</label>
+        <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400">{icon}</span>
+            <input type={type} value={value || ''} onChange={(e)=>onChange(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-xl focus:bg-white border-2 border-transparent focus:border-indigo-50 outline-none text-sm font-semibold text-gray-700" />
+        </div>
+    </div>
+);
 
 export default UsersList;
