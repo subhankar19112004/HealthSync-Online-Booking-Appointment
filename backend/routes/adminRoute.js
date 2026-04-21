@@ -29,7 +29,7 @@ adminRouter.get('/dashboard', authAdmin, adminDashboard);
 
 // User management routes
 adminRouter.get('/all-users', authAdmin, allUsersWithAppointments);  
-adminRouter.put('/update-user/:userId', authAdmin, updateUserProfile);  
+adminRouter.put('/update-user/:userId', authAdmin, upload.single('image'), updateUserProfile);
 adminRouter.delete('/delete-user/:userId', authAdmin, deleteUser);  
 adminRouter.get('/view-user/:userId', authAdmin, viewUserProfile);
 adminRouter.post('/block-user', authAdmin, blockUser);

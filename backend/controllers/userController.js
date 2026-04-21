@@ -10,39 +10,51 @@ import razorpay from "razorpay";
 // Api to register user
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
+    // 1. Added 'gender' to the destructured body
+    const { name, email, password, gender } = req.body;
+
+    // 2. Updated validation to make gender mandatory
+    if (!name || !email || !password || !gender) {
       return res.status(400).json({
-        message: "All fields are required",
+        message: "All fields (Name, Email, Password, and Gender) are required",
         success: false
       })
     }
 
+    // Email validation
     if (!validator.isEmail(email)) {
       return res.status(400).json({
-        message: "Email is not valid",
+        message: "Please enter a valid email address",
         success: false
       })
     }
 
+    // Password strength validation
     if (!validator.isStrongPassword(password)) {
       return res.status(400).json({
-        message: "Password is not strong enough",
+        message: "Password must be stronger (Min 8 chars, including uppercase, numbers, and symbols)",
         success: false
       })
     }
 
-    //hashing user password
+    // Hashing user password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // 3. Constructing user data with gender included
     const userData = {
       name,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      gender: String(gender), // Ensuring it is stored as a clean string
+      address: { line1: "", line2: "" }, // Default empty address to avoid frontend crashes
+      dob: "Not Selected" // Default DOB
     }
+
     const newUser = new userModel(userData);
     const user = await newUser.save();
+    
+    // Generate JWT token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
 
     res.status(201).json({
@@ -53,9 +65,13 @@ const registerUser = async (req, res) => {
 
   } catch (error) {
     console.log(error);
+    // Check for duplicate email error
+    if (error.code === 11000) {
+        return res.status(400).json({ message: "Email already exists", success: false });
+    }
     res.status(500).json({
-      message: "Something went wrong",
-      error,
+      message: "Server error during registration",
+      error: error.message,
       success: false
     })
   }

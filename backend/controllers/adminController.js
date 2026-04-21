@@ -11,52 +11,80 @@ import userModel from "../models/userModel.js";
 //addPatient function
 const addPatient = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
+    const { name, email, password, gender } = req.body;
+
+    // 1. Basic Validation
+    if (!name || !email || !password || !gender) {
       return res.status(400).json({
-        message: "All fields are required",
         success: false,
+        message: "Missing Details: Name, Email, Password, and Gender are required",
       });
     }
 
+    // 2. Email Validation
     if (!validator.isEmail(email)) {
       return res.status(400).json({
-        message: "Email is not valid",
         success: false,
+        message: "Please enter a valid email address",
       });
     }
 
+    // 3. Password Strength Validation
+    // This ensures the Admin creates secure accounts
     if (!validator.isStrongPassword(password)) {
       return res.status(400).json({
-        message: "Password is not strong enough",
         success: false,
+        message: "Password too weak! Must be 8+ chars with uppercase, numbers, and symbols.",
       });
     }
 
+    // 4. Check if user already exists
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "A patient with this email already exists",
+      });
+    }
+
+    // 5. Hashing Password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // 6. Preparing User Data
     const userData = {
       name,
       email,
       password: hashedPassword,
-      available: true, // By default, user is available to book appointments
+      gender,
+      // Default image for new patients if not uploaded
+      image: "https://static.vecteezy.com/system/resources/thumbnails/009/292/244/small/default-avatar-icon-of-social-media-user-vector.jpg",
+      createdAt: Date.now(),
     };
+
     const newUser = new userModel(userData);
     const user = await newUser.save();
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+
+    // 7. Generate Token (Optional for Admin, but good for immediate login if needed)
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
 
     res.status(201).json({
-      message: "User registered successfully",
-      token: token,
       success: true,
+      message: "New patient profile created successfully!",
+      userData: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        gender: user.gender
+      }
     });
+
   } catch (error) {
-    console.log(error);
+    console.error("Add Patient Error:", error);
     res.status(500).json({
-      message: "Something went wrong",
-      error,
       success: false,
+      message: "Internal Server Error",
+      error: error.message,
     });
   }
 };
@@ -87,7 +115,7 @@ const blockUser = async (req, res) => {
     await userModel.findByIdAndUpdate(userId, { blockUntil: blockUntilDate });
 
     res.status(200).json({
-      message: blockDuration > 0 
+      message: blockDuration > 0
         ? `User blocked successfully for ${blockDuration} days`
         : "User unblocked successfully",
       success: true,
@@ -142,6 +170,7 @@ const addDoctor = async (req, res) => {
     if (validator.isEmail(email) === false) {
       return res.status(400).json({
         message: "Email is not valid",
+        success: false,
       });
     }
 
@@ -149,6 +178,7 @@ const addDoctor = async (req, res) => {
     if (validator.isStrongPassword(password) === false) {
       return res.status(400).json({
         message: "Password is not strong enough",
+        success: false,
       });
     }
 
@@ -428,36 +458,37 @@ const allUsersWithAppointments = async (req, res) => {
 const updateUserProfile = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { phone, dob, gender, address, profilePic } = req.body; // Exclude name, email, and password from request body
+    const { name, phone, dob, gender } = req.body;
+    const imageFile = req.file;
 
-    // Ensure user exists
     const user = await userModel.findById(userId);
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-        success: false,
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // Update user details - Excluding name, email, and password
-    user.phone = phone || user.phone;
-    user.dob = dob || user.dob;
-    user.gender = gender || user.gender;
+    // Update text fields
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (dob) user.dob = dob;
+    if (gender) user.gender = gender;
+
+    // Handle Image Upload if a new file is provided
+    if (imageFile) {
+      const imageUpload = await cloudinary.uploader.upload(imageFile.path, { resource_type: "image" });
+      user.image = imageUpload.secure_url;
+    }
 
     await user.save();
 
     res.json({
       success: true,
       message: "User profile updated successfully",
-      user,
+      user
     });
+
   } catch (error) {
     console.log(error);
-    res.status(500).json({
-      message: "Something went wrong",
-      success: false,
-      error,
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
