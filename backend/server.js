@@ -3,7 +3,7 @@ import express from "express";
 import cors from "cors";
 
 import connectDB from "./config/mongodb.js";
-import connectCloudinary from "./config/cloudinary.js";
+import connectCloudinary from "./config/cloudinary.JS";
 import adminRouter from "./routes/adminRoute.js";
 import doctorRouter from "./routes/doctorRoute.js";
 import userRouter from "./routes/userRoutes.js";
@@ -35,7 +35,6 @@ const allowedOrigins =
 app.use(
   cors({
     origin(origin, callback) {
-      // Allow requests without an Origin header, such as health checks.
       if (!origin || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
         return callback(null, true);
       }
