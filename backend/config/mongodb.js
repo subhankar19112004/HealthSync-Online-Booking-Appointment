@@ -8,6 +8,8 @@ const connectDB = async () => {
   }
 
   await mongoose.connect(mongoUri, {
+    // Preserve the database used by the original application.
+    dbName: process.env.MONGODB_DATABASE || 'quickcare',
     serverSelectionTimeoutMS: 15000,
   });
 
