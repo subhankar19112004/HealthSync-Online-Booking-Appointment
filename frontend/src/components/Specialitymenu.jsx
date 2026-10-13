@@ -1,57 +1,83 @@
-import React from 'react'
-import { specialityData } from '../assets/assets_frontend/assets'
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import React from "react";
+import { specialityData } from "../assets/assets_frontend/assets";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { FaStethoscope } from "react-icons/fa";
 
 const SpecialityMenu = () => {
   return (
-    <div id='speciality' className='flex flex-col items-center gap-6 py-20 text-gray-800 px-6 max-w-7xl mx-auto'>
-      <motion.h1 
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        className='text-3xl md:text-5xl font-black tracking-tight text-center'
-      >
-        Find by <span className="text-violet-600">Speciality</span>
-      </motion.h1>
-      
-      <motion.p 
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className='w-full max-w-lg text-center text-sm md:text-base text-gray-500 font-medium leading-relaxed'
-      >
-        Simply browse through our trusted network of doctors and schedule your appointment hassle-free.
-      </motion.p>
-      
-      {/* Horizontal Scroll Container with added padding for the hover 'lift' effect */}
-      <div className='flex sm:justify-center gap-4 md:gap-10 pt-10 pb-12 w-full overflow-x-auto custom-scrollbar scroll-smooth'>
+    <section id="speciality" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto">
+      <div className="flex flex-col items-center gap-4 text-center">
+        {/* Section Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-600 text-xs font-bold tracking-widest uppercase"
+        >
+          <FaStethoscope /> Medical Categories
+        </motion.div>
+
+        {/* Heading */}
+        <motion.h2
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.1 }}
+          className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-gray-900"
+        >
+          Find by <span className="text-emerald-600">Speciality</span>
+        </motion.h2>
+
+        {/* Description */}
+        <motion.p
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2 }}
+          className="max-w-xl text-sm md:text-base text-gray-500 font-medium leading-relaxed"
+        >
+          Simply browse through our trusted network of specialized doctors and
+          schedule your medical consultation hassle-free.
+        </motion.p>
+      </div>
+
+      {/* Scrollable Container with cards */}
+      <div className="flex items-center sm:justify-center gap-6 sm:gap-8 pt-12 pb-8 w-full overflow-x-auto scrollbar-none scroll-smooth px-2">
         {specialityData.map((item, index) => (
           <motion.div
             key={index}
-            initial={{ opacity: 0, scale: 0.8 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ delay: index * 0.05, type: 'spring', stiffness: 100 }}
+            transition={{ delay: index * 0.05, type: "spring", stiffness: 120 }}
             className="shrink-0"
           >
-            <Link 
-              onClick={() => window.scrollTo(0, 0)} 
-              className='flex flex-col items-center group' 
+            <Link
+              onClick={() => window.scrollTo(0, 0)}
+              className="flex flex-col items-center group"
               to={`/doctors/${item.speciality}`}
             >
-              <div className='w-24 h-24 sm:w-32 sm:h-32 bg-violet-50 rounded-[2.5rem] flex items-center justify-center border-2 border-transparent group-hover:border-violet-200 group-hover:bg-white group-hover:-translate-y-4 shadow-sm group-hover:shadow-2xl transition-all duration-500 ease-out'>
-                <img className='w-14 sm:w-20' src={item.image} alt={item.speciality} />
+              <div className="w-28 h-28 sm:w-36 sm:h-36 bg-gray-50 rounded-[2.5rem] flex items-center justify-center border border-gray-100 group-hover:border-emerald-500/30 group-hover:bg-emerald-50/40 group-hover:-translate-y-2.5 shadow-sm group-hover:shadow-xl group-hover:shadow-emerald-600/10 transition-all duration-300 ease-out p-4 relative overflow-hidden">
+                {/* Subtle Hover Glow Backdrop */}
+                <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-[2.5rem]" />
+
+                <img
+                  className="w-14 sm:w-20 object-contain transition-transform duration-300 group-hover:scale-110 relative z-10"
+                  src={item.image}
+                  alt={item.speciality}
+                />
               </div>
-              <p className='mt-5 text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-gray-400 group-hover:text-violet-600 transition-colors text-center'>
+
+              <span className="mt-4 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-gray-600 group-hover:text-emerald-600 transition-colors text-center max-w-[120px] truncate">
                 {item.speciality}
-              </p>
+              </span>
             </Link>
           </motion.div>
         ))}
       </div>
-    </div>
-  )
-}
+    </section>
+  );
+};
 
 export default SpecialityMenu;
